@@ -104,10 +104,10 @@
   ## comment this line out to skip recommended but not required packages
   - import_tasks: recommended-packages.yml
 
+  - name: Install Katello / Satellite
+    yum: name="{{ installer_package }}" state=installed
+
 # TODO adapt to Satellite 6.3
-#  - name: Install Katello / Satellite
-#    yum: name="{{ installer_package }}" state=installed
-#
 #  - name: Copy answer file into place
 #    copy:
 #      src: role-ansible-satellite-{{ satellite_version }}-answers.yaml
