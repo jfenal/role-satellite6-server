@@ -2,15 +2,19 @@
 installer_packages:
   6.1: katello
   6.2: satellite
+  6.3: satellite
 installer_dirs:
   6.1: /etc/katello-installer
   6.2: /etc/foreman-installer/scenarios.d
+  6.3: /etc/foreman-installer/scenarios.d
 installer_files:
   6.1: /etc/katello-installer/katello-installer.yaml
   6.2: /etc/foreman-installer/scenarios.d/satellite.yaml
+  6.3: /etc/foreman-installer/scenarios.d/satellite.yaml
 installer_scripts:
   6.1: katello-installer
   6.2: satellite-installer
+  6.3: satellite-installer
 installer_package: "{{ installer_packages[satellite_version] }}"
 installer_dir: "{{ installer_dirs[satellite_version] }}"
 installer_file: "{{ installer_files[satellite_version] }}"

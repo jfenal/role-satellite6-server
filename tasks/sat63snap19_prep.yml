@@ -1,0 +1,7 @@
+---
+- name: install ca-consumer
+  yum:
+    name: http://sat-r220-02.lab.eng.rdu2.redhat.com/pub/katello-ca-consumer-latest.noarch.rpm
+    state: present
+- name: register via activationkey to the sat server
+  command: subscription-manager register --org Sat6-CI --activationkey 'satellite-6.3.0-qa-rhel7'

@@ -6,8 +6,8 @@
   - name: Fail if OS is not RHEL
     assert: { that: "ansible_distribution == 'RedHat'" } 
 
-  - name: Fail if OS is not RHEL 6.5 or higher
-    assert: { that: "ansible_distribution_version >= 6.5" } 
+  - name: Fail if OS is not RHEL 7
+    assert: { that: "ansible_distribution_version >= 7.0" } 
   
   - name: Check for Katello already installed
     command: "rpm -q katello"
@@ -50,90 +50,93 @@
     shell: "ping -c1 $(hostname -f)"
     changed_when: False
 
-  ## NOTE: this only works if your version of ansible includes https://github.com/ansible/ansible-modules-core/pull/1204 
-  ## which was merged 2015-08-24. If your version of Ansible is older, you'll need to identify 
-  ## your subscription pool ids and pass those to the role instead. 
-  - name: Enable RHEL subscription via username/password
-    redhat_subscription: 
-      state: present 
-      username: "{{ rhn_user }}"
-      password: "{{ rhn_pass }}"
-      pool: "{{ rhn_pool_pattern | default('.*Red Hat (Enterprise Linux|Satellite).*') }}"
-    when: rhn_user is defined and rhn_pass is defined
+  - import_tasks: sat63snap19_prep.yml
 
-  - name: Enable RHEL subscription via activation key
-    redhat_subscription: 
-      state: present 
-      activationkey: "{{ rhn_activationkey }}"
-      pool: "{{ rhn_pool_pattern | default('.*Red Hat (Enterprise Linux|Satellite).*') }}"
-    when: rhn_activation_key is defined
+#  ## NOTE: this only works if your version of ansible includes https://github.com/ansible/ansible-modules-core/pull/1204 
+#  ## which was merged 2015-08-24. If your version of Ansible is older, you'll need to identify 
+#  ## your subscription pool ids and pass those to the role instead. 
+#  - name: Enable RHEL subscription via username/password
+#    redhat_subscription: 
+#      state: present 
+#      username: "{{ rhn_user }}"
+#      password: "{{ rhn_pass }}"
+#      pool: "{{ rhn_pool_pattern | default('.*Red Hat (Enterprise Linux|Satellite).*') }}"
+#    when: rhn_user is defined and rhn_pass is defined
+#
+#  - name: Enable RHEL subscription via activation key
+#    redhat_subscription: 
+#      state: present 
+#      activationkey: "{{ rhn_activationkey }}"
+#      pool: "{{ rhn_pool_pattern | default('.*Red Hat (Enterprise Linux|Satellite).*') }}"
+#    when: rhn_activation_key is defined
 
-  - name: Check which pool IDs are already consumed
-    command: subscription-manager list --pool-only --consumed
-    register: consumed_pool_ids
-    changed_when: false
-
-  - name: Add subs by pool id if your version of Ansible has a buggy redhat_subscription module
-    command: "subscription-manager subscribe --pool={{ item }}"
-    with_items: "{{ rhn_pool_ids | default([])}}"
-    when: item not in consumed_pool_ids.stdout_lines
+#  - name: Check which pool IDs are already consumed
+#    command: subscription-manager list --pool-only --consumed
+#    register: consumed_pool_ids
+#    changed_when: false
+#
+#  - name: Add subs by pool id if your version of Ansible has a buggy redhat_subscription module
+#    command: "subscription-manager subscribe --pool={{ item }}"
+#    with_items: "{{ rhn_pool_ids | default([])}}"
+#    when: item not in consumed_pool_ids.stdout_lines
      
-  ## FIXME: these two tasks together shouldn't change the end-state, but neither is idempotent
-  - name: Reset enabled yum/rhn distros
-    command: subscription-manager repos --disable "*"
-    ignore_errors: true
+#  ## FIXME: these two tasks together shouldn't change the end-state, but neither is idempotent
+#  - name: Reset enabled yum/rhn distros
+#    command: subscription-manager repos --disable "*"
+#    ignore_errors: true
 
-  ## Note: Satellite channel is rhel-<rhel version>-server-satellite-<satellite version>-rpms
-  - name: Only enable required yum/rhn distros
-    command: "subscription-manager repos \
-      --enable rhel-{{ ansible_distribution_major_version }}-server-rpms \
-      --enable rhel-server-rhscl-{{ ansible_distribution_major_version }}-rpms \
-      --enable rhel-{{ ansible_distribution_major_version }}-server-satellite-{{ satellite_version }}-rpms"
+#  ## Note: Satellite channel is rhel-<rhel version>-server-satellite-<satellite version>-rpms
+#  - name: Only enable required yum/rhn distros
+#    command: "subscription-manager repos \
+#      --enable rhel-{{ ansible_distribution_major_version }}-server-rpms \
+#      --enable rhel-server-rhscl-{{ ansible_distribution_major_version }}-rpms \
+#      --enable rhel-{{ ansible_distribution_major_version }}-server-satellite-{{ satellite_version }}-rpms"
 
   ## Installs and activates time sync. This is required for Foreman to function
-  - include: timesync-{{ ansible_distribution_major_version }}.yml
+  - include_tasks: timesync-{{ ansible_distribution_major_version }}.yml
 
   ## Installs and configures firewall- comment out to leave firewall out
-  - include: firewall-{{ ansible_distribution_major_version }}.yml
+  - include_tasks: firewall-{{ ansible_distribution_major_version }}.yml
 
   - name: upgrade all the RPMs to their latest version (recommmended)
     yum: name='*' state='latest'
 
   ## comment this line out to skip recommended but not required packages
-  - include: recommended-packages.yml
+  - import_tasks: recommended-packages.yml
 
-  - name: Install Katello / Satellite
-    yum: name="{{ installer_package }}" state=installed
-
-  - name: Copy answer file into place
-    copy:
-      src: role-ansible-satellite-{{ satellite_version }}-answers.yaml
-      dest: "{{ installer_answer_file }}"
-    register: copied_answer_file
-
-  - block:
-
-    - name: Enable answer file for Satellite 6.1-
-      lineinfile:
-        dest: "{{ installer_file }}"
-        line: ':answer_file: {{ installer_answer_file }}'
-
-    - name: Run Katello installer for Satellite 6.1-
-      command: "{{ installer_script }}"
-      when: copied_answer_file.changed == true
-
-    when: satellite_version < 6.2
-
-  - block:
-
-    - name: Enable answer file for Satellite 6.2+
-      lineinfile:
-        dest: "{{ installer_file }}"
-        line: '  :answer_file: {{ installer_answer_file }}'
-        regexp: '^ *:answer_file: '
-
-    - name: Run Satellite installer for Satellite 6.2+
-      command: "{{ installer_script }} --scenario satellite"
-      when: copied_answer_file.changed == true
-
-    when: satellite_version >= 6.2
+# TODO adapt to Satellite 6.3
+#  - name: Install Katello / Satellite
+#    yum: name="{{ installer_package }}" state=installed
+#
+#  - name: Copy answer file into place
+#    copy:
+#      src: role-ansible-satellite-{{ satellite_version }}-answers.yaml
+#      dest: "{{ installer_answer_file }}"
+#    register: copied_answer_file
+#
+#  - block:
+#
+#    - name: Enable answer file for Satellite 6.1-
+#      lineinfile:
+#        dest: "{{ installer_file }}"
+#        line: ':answer_file: {{ installer_answer_file }}'
+#
+#    - name: Run Katello installer for Satellite 6.1-
+#      command: "{{ installer_script }}"
+#      when: copied_answer_file.changed == true
+#
+#    when: satellite_version < 6.2
+#
+#  - block:
+#
+#    - name: Enable answer file for Satellite 6.2+
+#      lineinfile:
+#        dest: "{{ installer_file }}"
+#        line: '  :answer_file: {{ installer_answer_file }}'
+#        regexp: '^ *:answer_file: '
+#
+#    - name: Run Satellite installer for Satellite 6.2+
+#      command: "{{ installer_script }} --scenario satellite"
+#      when: copied_answer_file.changed == true
+#
+#    when: satellite_version >= 6.2
