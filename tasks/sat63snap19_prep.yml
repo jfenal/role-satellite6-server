@@ -5,3 +5,6 @@
     state: present
 - name: register via activationkey to the sat server
   command: subscription-manager register --org '{{ rhn_org }}' --activationkey '{{ rhn_activation_key }}'
+  register: rhsm_return
+  failed_when: rhsm_return.failed and "This system is already registered" not in rhsm_return.stderr
+  changed_when: not rhsm_return.failed
