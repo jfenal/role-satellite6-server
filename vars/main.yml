@@ -1,4 +1,20 @@
----
+satellite_version: "6.2"
+satellite_ports:
+  # HTTP
+  - { service: 'http', state: 'enabled' }
+  # HTTPS
+  - { service: 'https', state: 'enabled' }
+  # Satellite SSL comm
+  - { port: '5671/tcp', state: 'enabled' }
+  # Tomcat
+  - { port: '8080/tcp', state: 'enabled' }
+  # Puppet
+  - { port: '8140/tcp', state: 'enabled' }
+  # Foreman
+  - { port: '9090/tcp', state: 'enabled' }
+
+
+
 installer_packages:
   6.1: katello
   6.2: satellite
