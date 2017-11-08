@@ -1,4 +1,4 @@
-Install and configure Satellite 6 on a RHEL 6 or 7 host.
+Install and configure Satellite 6 on a Red Hat Enteprise 7 host.
 ====
 
 This is based on the process outlined here:
@@ -30,6 +30,7 @@ FIXME: has this one been tested? Using activation keys with RHSM needs an org_id
   inclure_role:
     name: role-satellite6-server
   vars:
+    - rhn_org: "{{ my_rhn_org }}"
     - rhn_activationkey: "{{ my_satellite_activation_key }}"
 ```
 
