@@ -1,5 +1,6 @@
-satellite_version: "6.2"
 satellite_ports:
+# FIXME : to be replaced with "RH-Satellite-6" service??
+
   # HTTP
   - { service: 'http', state: 'enabled' }
   # HTTPS
@@ -12,8 +13,8 @@ satellite_ports:
   - { port: '8140/tcp', state: 'enabled' }
   # Foreman
   - { port: '9090/tcp', state: 'enabled' }
-
-
+  # Capsules
+  - { port: '5646/tcp', state: 'enabled' }
 
 installer_packages:
   6.1: katello
