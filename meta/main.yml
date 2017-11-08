@@ -1,2 +1,4 @@
 ---
-dependencies: []
+dependencies:
+  - linux-system-roles.firewall
+  - linux-system-roles.timesync
