@@ -1,0 +1,4 @@
+---
+  - name: Ensure timesync is in place and configured
+    include_role:
+      name: linux-system-roles.timesync

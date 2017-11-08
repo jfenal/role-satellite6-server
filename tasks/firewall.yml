@@ -1,0 +1,10 @@
+---
+
+- name: open firewall for Red Hat Satellite
+  include_role:
+    name: linux-system-roles.firewall
+  vars:
+    firewall: "{{ satellite_ports }}"
+    trust: "{{ satellite_ifaces }}"
+  notify: restart firewalld
+  tags: firewalld
