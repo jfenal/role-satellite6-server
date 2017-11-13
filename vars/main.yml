@@ -16,6 +16,11 @@ satellite_ports:
   # Capsules
   - { port: '5646/tcp', state: 'enabled' }
 
+satellite_recommended_packages:
+  - sos
+  - bash-completion
+  - sysstat
+
 installer_packages:
   6.1: katello
   6.2: satellite
@@ -38,3 +43,8 @@ installer_file: "{{ installer_files[satellite_version] }}"
 installer_script: "{{ installer_scripts[satellite_version] }}"
 # Sounds like a defaults-var can't rely on a vars-var, hence defined here:
 installer_answer_file: "{{ installer_dir }}/role-ansible-satellite6-answers.yaml"
+
+satellite_admin_password: "{{ vault_satellite_admin_password }}"
+satellite_default_organization: "Default Organization"
+satellite_default_location: "Default Location"
+
