@@ -4,7 +4,6 @@
       msg: You must pass authentication data to this role. See README.md
     when: "( rhn_user is not defined or rhn_pass is not defined ) and rhn_activation_key is not defined and rhn_pool_ids is not defined"
 
-
   - name: Fail if OS is not RHEL
     assert: { that: "ansible_distribution == 'RedHat'" }
 
@@ -24,7 +23,9 @@
     ignore_errors: true
 
   - fail:
-      msg: "Katello cannot be installed when a conflicting version of puppet is installed"
+      msg: "Katello cannot be installed when a conflict use rhel-server role
+  #   include_role:
+  #     name: rhel-servering version of puppet is installed"
     when: "puppet_in_path.rc == 0 and katello_installed.rc == 1 "
 
   - name: Check for Java in $PATH
@@ -60,43 +61,53 @@
 #  ## NOTE: this only works if your version of ansible includes https://github.com/ansible/ansible-modules-core/pull/1204
 #  ## which was merged 2015-08-24. If your version of Ansible is older, you'll need to identify
 #  ## your subscription pool ids and pass those to the role instead.
-#  - name: Enable RHEL subscription via username/password
-#    redhat_subscription:
-#      state: present
-#      username: "{{ rhn_user }}"
-#      password: "{{ rhn_pass }}"
-#      pool: "{{ rhn_pool_pattern | default('.*Red Hat (Enterprise Linux|Satellite).*') }}"
-#    when: rhn_user is defined and rhn_pass is defined
-#
-#  - name: Enable RHEL subscription via activation key
-#    redhat_subscription:
-#      state: present
-#      activationkey: "{{ rhn_activationkey }}"
-#      pool: "{{ rhn_pool_pattern | default('.*Red Hat (Enterprise Linux|Satellite).*') }}"
-#    when: rhn_activation_key is defined
 
-#  - name: Check which pool IDs are already consumed
-#    command: subscription-manager list --pool-only --consumed
-#    register: consumed_pool_ids
-#    changed_when: false
-#
-#  - name: Add subs by pool id if your version of Ansible has a buggy redhat_subscription module
-#    command: "subscription-manager subscribe --pool={{ item }}"
-#    with_items: "{{ rhn_pool_ids | default([])}}"
-#    when: item not in consumed_pool_ids.stdout_linesrhn_org
+  - name: Enable RHEL subscription via username/password
+    redhat_subscription:
+      state: present
+      username: "{{ rhn_user }}"
+      password: "{{ rhn_pass }}"
+      pool: "{{ rhn_pool_pattern | default('.*Red Hat Satellite.*') }}"
+    when: rhn_user is defined and rhn_pass is defined
+    tags: register
 
-#  ## FIXME: these two tasks together shouldn't change the end-state, but neither is idempotent
-#  - name: Reset enabled yum/rhn distros
-#    command: subscription-manager repos --disable "*"
-#    ignore_errors: true
+  - name: Enable RHEL subscription via activation key
+    redhat_subscription:
+      state: present
+      activationkey: "{{ rhn_activationkey }}"
+      pool: "{{ rhn_pool_pattern | default('.*Red Hat Satellite.*') }}"
+    when: rhn_activation_key is defined
+    tags: register
 
-#  ## Note: Satellite channel is rhel-<rhel version>-server-satellite-<satellite version>-rpms
-#  - name: Only enable required yum/rhn distros
-#    command: "subscription-manager repos \
-#      --enable rhel-{{ ansible_distribution_major_version }}-server-rpms \
-#      --enable rhel-server-rhscl-{{ ansible_distribution_major_version }}-rpms \
-#      --enable rhel-{{ ansible_distribution_major_version }}-server-satellite-{{ satellite_version }}-rpms"
+  - name: Check which pool IDs are already consumed
+    command: subscription-manager list --pool-only --consumed
+    register: consumed_pool_ids
+    changed_when: false
+    tags: register
 
+  - name: Add subs by pool id if your version of Ansible has a buggy redhat_subscription module
+    command: "subscription-manager subscribe --pool={{ item }}"
+    with_items: "{{ rhn_pool_ids | default([])}}"
+    when: item not in consumed_pool_ids.stdout_lines
+    tags: register
+
+ ## FIXME: these two tasks together shouldn't change the end-state, but neither is idempotent
+  - name: Reset enabled yum/rhn distros
+    command: subscription-manager repos --disable "*"
+    ignore_errors: true
+    tags:
+      - register
+      - repos
+
+ ## Note: Satellite channel is rhel-<rhel version>-server-satellite-<satellite version>-rpms
+  - name: Only enable required yum/rhn distros
+    command: "subscription-manager repos \
+      --enable rhel-{{ ansible_distribution_major_version }}-server-rpms \
+      --enable rhel-server-rhscl-{{ ansible_distribution_major_version }}-rpms \
+      --enable rhel-{{ ansible_distribution_major_version }}-server-satellite-{{ satellite_version }}-rpms"
+    tags:
+      - register
+      - repos
   ## Installs and activates time sync. This is required for Foreman to function
   - include_tasks: timesync.yml
 
@@ -107,6 +118,8 @@
     yum:
       name: '*'
       state: latest
+    tags:
+      - update_packages
 
   ## comment this line out to skip recommended but not required packages
   - import_tasks: recommended-packages.yml
@@ -115,6 +128,8 @@
     yum:
       name: "{{ installer_package }}"
       state: present
+    tags:
+      - packages
 
 # TODO adapt to Satellite 6.3
   - name: Copy answer file into place
